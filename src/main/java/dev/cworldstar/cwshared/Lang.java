@@ -52,8 +52,10 @@ public class Lang implements Listener {
 	
 	@Getter
 	private boolean prefixEnabled = false;
+	private YamlConfiguration langConfig;
 	@Getter
 	private Component prefix;
+	@Getter
 	private String stringPrefix;
 	private static HashMap<String, ConfigurationSection> LANG_CACHE = new HashMap<String, ConfigurationSection>();
 	private static String DEFAULT_LANG = "<red><bold>An error occured finding lang section %lang%.</bold><red>";
@@ -87,11 +89,15 @@ public class Lang implements Listener {
 	}
 	
 	/**
+	 * 
+	 * Deprecated. Use {@link #get(Player, String, Map, boolean)} instead.
+	 * 
 	 * Gets a MiniMessage component of a given lang lookup string with optional replacements.
 	 * @param lang
 	 * @param replacements
 	 * @return
 	 */
+	@Deprecated
 	public Component getWithoutPrefix(@Nonnull Player player, @Nonnull String lang, @Nullable Map<String, String> replacements) {
 		Validate.notNull(lang, "Method Lang#getWithoutPrefix must contain a lang lookup key.");
 		String value = null;
@@ -125,6 +131,8 @@ public class Lang implements Listener {
 	
 	/**
 	 * Gets a MiniMessage component of a given lang lookup string with optional replacements.
+	 * This should be the ONLY version of Lang#get() that should be used, unless you require
+	 * {@link Lang#getList(OfflinePlayer, String)}.
 	 * @param lang
 	 * @param replacements
 	 * @return
@@ -155,20 +163,19 @@ public class Lang implements Listener {
 		}
 		
 		if(value == null) {
-			if(prefixEnabled) {
-				return prefix.append(FormatUtils.createMiniMessageComponent(DEFAULT_LANG.replace("%lang%", lang)));
-			}
 			return FormatUtils.createMiniMessageComponent(DEFAULT_LANG.replace("%lang%", lang));
 		}
 		value = PlaceholderAPI.setPlaceholders(player, value);
-		if(prefixEnabled) {
-			return prefix.append(FormatUtils.createMiniMessageComponent(value));
-		}
 		return FormatUtils.createMiniMessageComponent(value);
 	}
 	
 	public Component get(@Nonnull Player player, @Nonnull String lang) {
 		return get(player, lang, null);
+	}
+	
+	public Component get(@Nonnull Player player, @Nonnull String lang, @Nullable Map<String, String> replacements, boolean prefix) {
+		Component after = get(player, lang, replacements);
+		return getPrefix().append(after);
 	}
 	
 	public List<Component> getList(@Nonnull OfflinePlayer player, @Nonnull String lang, @Nullable Map<String, String> replacements) {
@@ -191,6 +198,15 @@ public class Lang implements Listener {
 		return getList(player, lang, null);
 	}
 	
+	/**
+	 * Use {@link #getAsString(Player, String)} instead. The lang class no longer
+	 * appends the prefix.
+	 * @param player
+	 * @param lang
+	 * @param replacements
+	 * @return
+	 */
+	@Deprecated
 	public String getAsStringWithoutPrefix(@Nonnull Player player, @Nonnull String lang, @Nullable Map<String, String> replacements) {
 		Validate.notNull(lang, "Method Lang#getAsStringWithoutPrefix must contain a lang lookup key.");
 		String value = null;
@@ -243,17 +259,11 @@ public class Lang implements Listener {
 		}
 		
 		if(value == null) {
-			if(prefixEnabled) {
-				return stringPrefix + DEFAULT_LANG;
-			}
 			return DEFAULT_LANG;
 		}
 		
 		value = PlaceholderAPI.setPlaceholders(player, value);
-		
-		if(prefixEnabled) {
-			return stringPrefix + value;
-		}
+	
 		return value;
 	}
 	
@@ -276,7 +286,7 @@ public class Lang implements Listener {
 			langDirectory.mkdirs();
 		}
 		File langFile = new File(langDirectory + "/lang.yml");
-		YamlConfiguration langConfig = YamlConfiguration.loadConfiguration(langFile);
+		langConfig = YamlConfiguration.loadConfiguration(langFile);
 		ConfigurationSection prefixSettings = langConfig.getConfigurationSection("prefix");
 		prefixEnabled = prefixSettings.getBoolean("enabled");
 		prefix = FormatUtils.createMiniMessageComponent(prefixSettings.getString("value"));
@@ -313,7 +323,7 @@ public class Lang implements Listener {
 				e.printStackTrace();
 			}
 		}
-		YamlConfiguration langConfig = YamlConfiguration.loadConfiguration(langFile);
+		langConfig = YamlConfiguration.loadConfiguration(langFile);
 		ConfigurationSection prefixSettings = langConfig.getConfigurationSection("prefix");
 		prefixEnabled = prefixSettings.getBoolean("enabled");
 		prefix = FormatUtils.createMiniMessageComponent(prefixSettings.getString("value"));

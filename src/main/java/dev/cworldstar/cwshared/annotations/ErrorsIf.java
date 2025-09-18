@@ -1,4 +1,4 @@
-package dev.cworldstar.cwshared.ui;
+package dev.cworldstar.cwshared.annotations;
 
 import java.lang.annotation.Repeatable;
 import java.lang.annotation.Retention;

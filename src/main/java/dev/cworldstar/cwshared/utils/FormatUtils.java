@@ -107,6 +107,10 @@ public class FormatUtils {
 		throw new UnsupportedOperationException("This is a static class!");
 	}
 	
+	public static boolean isLegacy(Component check) {
+		return cmatcher.matcher(check.examinableName()).find();
+	}
+	
 	/**
 	 * Converts a given string of text from MiniMessage formatting
 	 * to a legacy color coded string.
