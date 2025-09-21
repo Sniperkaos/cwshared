@@ -16,10 +16,10 @@ import org.jetbrains.annotations.NotNull;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.TextReplacementConfig;
-import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import net.md_5.bungee.api.ChatColor;
 
 /**
@@ -39,6 +39,8 @@ public class FormatUtils {
 		COLOR_CODES
 	}
 
+	public static TextComponent NEWLINE = PlainTextComponentSerializer.plainText().deserialize("\\u000a");
+	
 	/**
 	 * Converts MiniMessage formatting to legacy color codes.
 	 * @param from The string to query
@@ -107,6 +109,11 @@ public class FormatUtils {
 		throw new UnsupportedOperationException("This is a static class!");
 	}
 	
+	/**
+	 * 
+	 * @param check The component to check
+	 * @return If the given component contains legacy color codes.
+	 */
 	public static boolean isLegacy(Component check) {
 		return cmatcher.matcher(check.examinableName()).find();
 	}
@@ -139,11 +146,15 @@ public class FormatUtils {
 	 * or from translating color codes if legacy color codes are matched.
 	 */
 	public static Component createMiniMessageComponent(String text) {
-		Matcher matcher = cmatcher.matcher(text);
-		if(matcher.find()) {
+		MessageType type = findMessageType(text);
+		if(type.equals(MessageType.COLOR_CODES)) {
 			return LegacyComponentSerializer.builder().hexColors().extractUrls().character('&').build().deserialize(text);
 		}
-		return MINI_MESSAGE_FORMATTER.deserialize(text).decoration(TextDecoration.ITALIC, false);
+		return MINI_MESSAGE_FORMATTER.deserialize("<!italic>" + text);
+	}
+	
+	public static String deserializeMiniMessageComponent(Component component) {
+		return LegacyComponentSerializer.builder().hexColors().extractUrls().character('&').build().serialize(component);
 	}
 	
 	/**
@@ -153,6 +164,15 @@ public class FormatUtils {
 	 */
 	public static Component mm(String text) {
 		return createMiniMessageComponent(text);
+	}
+	
+	/**
+	 * Alternative version of {@link #mm(String)}
+	 * @param s
+	 * @return
+	 */
+	public static Component of(String text) {
+		return mm(text);
 	}
 	
 	/**

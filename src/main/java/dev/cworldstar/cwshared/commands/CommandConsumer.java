@@ -47,13 +47,17 @@ public abstract class CommandConsumer {
 			args.remove(0);
 		}
 
-		this.execute(player, args);
+		execute(player, args);
 	}
 
 	protected List<String> getCompletions(int length) {
 		return null;
 	};
 
+	protected List<String> getCompletions(List<String> args, int length) {
+		return null;
+	};
+	
 	protected List<String> getCompletions(Player p, int length) {
 		return null;
 	}

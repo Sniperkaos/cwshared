@@ -7,11 +7,14 @@ import java.util.Map;
 
 import javax.annotation.ParametersAreNullableByDefault;
 
+import org.bukkit.Material;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
+import dev.cworldstar.cwshared.builders.ItemStackBuilder;
+import dev.cworldstar.cwshared.builders.PlayerHeadBuilder;
 import dev.cworldstar.cwshared.events.TickerTickEvent;
 
 public class PageLayout {
@@ -24,11 +27,13 @@ public class PageLayout {
 	private List<String> meta = new ArrayList<String>();
 	
 	private PagedUIObject parent;
-	private ItemStack leftItem;
 	private Inventory inventory;
-	private ItemStack rightItem;
-	private ItemStack closeItem;
-	private ItemStack barrierItem;
+	
+	private ItemStack barrierItem = new ItemStackBuilder(Material.BLACK_STAINED_GLASS_PANE).empty().build();
+	private ItemStack closeItem = new PlayerHeadBuilder("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvY2ZmZDA2OWE3YTBlYjhlMTQ5YWU3NjM1M2M1MGZjNjM4MzI5ZDI2NjI2MDgyNGFiMTFjMTY4MzEzZjViMGI4In19fQ==").build();
+	private ItemStack rightItem = new PlayerHeadBuilder("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMjkxYWM0MzJhYTQwZDdlN2E2ODdhYTg1MDQxZGU2MzY3MTJkNGYwMjI2MzJkZDUzNTZjODgwNTIxYWYyNzIzYSJ9fX0=").build();
+	private ItemStack leftItem = new PlayerHeadBuilder("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvN2EyYzEyY2IyMjkxODM4NGUwYTgxYzgyYTFlZDk5YWViZGNlOTRiMmVjMjc1NDgwMDk3MjMxOWI1NzkwMGFmYiJ9fX0=").build();
+	
 	
 	private boolean active = false;
 	
@@ -62,7 +67,7 @@ public class PageLayout {
 			leftSlot = right_slot;
 			addMenuClickHandler(left_slot, new MenuHandler<InventoryClickEvent>((InventoryClickEvent e) -> {
 				e.setCancelled(true);
-				parent.nextPage();
+				parent.previousPage();
 			}));
 		}
 		
@@ -71,7 +76,7 @@ public class PageLayout {
 			closeSlot = close_slot;
 			addMenuClickHandler(close_slot, new MenuHandler<InventoryClickEvent>((InventoryClickEvent e) -> {
 				e.setCancelled(true);
-				parent.nextPage();
+				parent.close();
 			}));
 		}
 	}
@@ -272,11 +277,11 @@ public class PageLayout {
 	 */
 	public int firstEmpty() {
 		for(int i=0; i<parent.getInventory().getSize(); i++) {
-			if(this.layout.get(i) == null && 
-					!this.barrier_slots.contains(i) &&
-					this.rightSlot != i &&
-					this.leftSlot != i &&
-					this.closeSlot != i
+			if(layout.get(i) == null && 
+					!barrier_slots.contains(i) &&
+					rightSlot != i &&
+					leftSlot != i &&
+					closeSlot != i
 			) {
 				return i;
 			}
@@ -288,14 +293,14 @@ public class PageLayout {
 		return this.layout.get(slot);
 	}
 
-	public boolean hasMeta(String pfItemID) {
-		return meta.contains(pfItemID);
+	public boolean hasMeta(String meta) {
+		return meta.contains(meta);
 	}
 
-	public void addMeta(String any) {
-		meta.add(any);
+	public void addMeta(String meta) {
+		this.meta.add(meta);
 	}
-
+	
 	public void setPage(int page) {
 		this.page = page;
 	}

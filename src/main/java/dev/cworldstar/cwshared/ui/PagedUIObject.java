@@ -3,13 +3,10 @@ package dev.cworldstar.cwshared.ui;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Predicate;
-import java.util.logging.Level;
-
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import org.apache.commons.lang3.Validate;
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
@@ -30,8 +27,9 @@ public abstract class PagedUIObject extends BaseUIObject {
 	
 	public void addLayout(PageLayout layout) {
 		layout.setInventory(this.getInventory());
+		layout.setParent(this);
 		layout.setPage(this.layouts.size());
-		this.layouts.add(layout);
+		layouts.add(layout);
 	}
 
 	/**
@@ -72,17 +70,17 @@ public abstract class PagedUIObject extends BaseUIObject {
 	}
 	
 	public void tickLayouts(TickerTickEvent e) {
-		for(PageLayout layout : this.layouts) {
-			//if(layout.isActive()) {
+		for(PageLayout layout : layouts) {
+			if(layout.isActive()) {
 				layout.tick(e);
-			//}
+			}
 		}
 	}
 	
 	public void setup() {
-		decorateLayout(this.to_decorate);
-		
-		this.addGlobalMenuClickHandler(new MenuHandler<InventoryClickEvent>((InventoryClickEvent e)-> {
+		decorateLayout(to_decorate);
+		Validate.isTrue(layouts.size() > 0, "PagedUIObject#decorateLayout MUST contain at least 1 PageLayout!");
+		addGlobalMenuClickHandler(new MenuHandler<InventoryClickEvent>((InventoryClickEvent e)-> {
 			PageLayout layout = this.layouts.get(this.page);
 			if(e.isShiftClick()) {
 				layout.shiftClick(e, e.getSlot());
@@ -90,23 +88,21 @@ public abstract class PagedUIObject extends BaseUIObject {
 				layout.click(e, e.getSlot());
 			}
 		}));
-		
+		addTicker(new MenuHandler<TickerTickEvent>((TickerTickEvent e) -> {
+			tickLayouts(e);
+		}));
 		decoratePageWithLayout(layouts.get(0));
 	}
 	
 	public PagedUIObject(JavaPlugin plugin, Player player, InventorySize size) {
 		super(plugin, player, size);
-		
-		this.layouts = new ArrayList<PageLayout>();
-		
+		layouts = new ArrayList<PageLayout>();
 		setup();
 	}
 
 	public PagedUIObject(JavaPlugin plugin, Player player, InventorySize extraLarge, String string) {
 		super(plugin, player, extraLarge, string);
-		
-		this.layouts = new ArrayList<PageLayout>();
-		
+		layouts = new ArrayList<PageLayout>();
 		setup();
 	}
 

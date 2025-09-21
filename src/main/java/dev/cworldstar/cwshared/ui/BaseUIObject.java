@@ -35,11 +35,13 @@ import lombok.Setter;
 public abstract class BaseUIObject implements Listener {
 	
 	public static List<BaseUIObject> openUIObjects = new ArrayList<BaseUIObject>();
+	public static HashMap<UUID, InventoryHistory> history = new HashMap<UUID, InventoryHistory>();
 	
 	public static enum InventorySize {
 
 		/**
 		 * Flexes inventory size based on contents of inventory.
+		 * TODO: incomplete
 		 */
 		FLEX(-1),
 		/**
@@ -131,26 +133,26 @@ public abstract class BaseUIObject implements Listener {
 	}
 	
 	public BaseUIObject(JavaPlugin plugin, Player player, InventorySize size, String title) {
-		this.owner = player;
-		this.inventory = Bukkit.createInventory(player, size.toInt(), FormatUtils.mm(title));
-		this.decorate(inventory);
+		owner = player;
+		inventory = Bukkit.createInventory(player, size.toInt(), FormatUtils.mm(title));
+		decorate(inventory);
 		if(backgroundItem != null && backgroundSlots != null) {
 			for(int slot : getBackgroundSlots()) {
 				addUnclickableItem(slot, backgroundItem);
 			}
 		}
 		Bukkit.getPluginManager().registerEvents(this, plugin);
-		BaseUIObject.openUIObjects.add(this);
+
 	}
 	
 	public void close() {
-		this.owner.closeInventory();
+		owner.closeInventory();
 	}
 	
 	@Nonnull
 	public int getFirstClearSlot() {
-		for(int i=0; i<this.inventory.getSize(); i++) {
-			if(this.inventory.getItem(i) == null) {
+		for(int i=0; i<inventory.getSize(); i++) {
+			if(inventory.getItem(i) == null) {
 				return i;
 			}
 		}
@@ -159,10 +161,15 @@ public abstract class BaseUIObject implements Listener {
 	
 	public void open() {
 		if(this.getOwner().getOpenInventory().equals(this.view)) {
-			// prevent double inventory opening
 			return;
 		}
 		this.view = this.owner.openInventory(inventory);
+		if(!history.containsKey(getOwner().getUniqueId())) {
+			history.put(owner.getUniqueId(), new InventoryHistory(owner));
+		}
+		InventoryHistory playerHistory = history.get(owner.getUniqueId());
+		playerHistory.addHistory(this);
+		BaseUIObject.openUIObjects.add(this);
 	}
 	
 	/**
@@ -277,12 +284,12 @@ public abstract class BaseUIObject implements Listener {
 	}
 	
 	public void addTicker(MenuHandler<TickerTickEvent> handler) {
-		this.tickers.add(handler);
+		tickers.add(handler);
 	}
 	
 	@EventHandler
 	public void onTickerTick(TickerTickEvent e) {
-		this.tickers.forEach((MenuHandler<TickerTickEvent> handler) -> {
+		tickers.forEach((MenuHandler<TickerTickEvent> handler) -> {
 			handler.run(e);
 		});
 	}
@@ -292,6 +299,7 @@ public abstract class BaseUIObject implements Listener {
 		
 		Inventory c_inventory = e.getClickedInventory();
 		if(c_inventory == null) return;
+		if(this.view == null) return;
 		
 		Player clicker = (Player) e.getWhoClicked();
 		if(clicker.getOpenInventory().equals(this.view)) {
@@ -329,7 +337,7 @@ public abstract class BaseUIObject implements Listener {
 	
     @EventHandler
     public void onInventoryDrag(InventoryDragEvent e) {
-        if (e.getInventory().equals(this.inventory)) {
+        if (e.getInventory().equals(inventory)) {
           e.setCancelled(true);
         }
     }
@@ -337,7 +345,7 @@ public abstract class BaseUIObject implements Listener {
     
     @EventHandler
     public void onPlayerDeath(PlayerDeathEvent e) {
-    	this.okay_to_close = true;
+    	okay_to_close = true;
     	bypass_close = true;
 		inventory_close_handlers.forEach((MenuHandler<InventoryCloseEvent> handler) -> {
 			handler.run(new InventoryCloseEvent(view));
@@ -346,46 +354,53 @@ public abstract class BaseUIObject implements Listener {
     
     @EventHandler
     public void onPlayerLeave(PlayerQuitEvent e) {
-    	this.okay_to_close = true;
+    	okay_to_close = true;
     	bypass_close = true;
 		inventory_close_handlers.forEach((MenuHandler<InventoryCloseEvent> handler) -> {
 			handler.run(new InventoryCloseEvent(view));
 		});
     }
-	
+    
 	@EventHandler(priority = EventPriority.HIGH)
 	public void onInventoryClose(InventoryCloseEvent e) {
-		Inventory c_inventory = e.getInventory();
-		if(c_inventory.equals(this.inventory)) {
-			inventory_close_handlers.forEach((MenuHandler<InventoryCloseEvent> handler) -> {
-				handler.run(e);
-			});
-			if(
-				this.okay_to_close || 
-				bypass_close
-			) {
-				InventoryCloseEvent.getHandlerList().unregister(this);
-				InventoryClickEvent.getHandlerList().unregister(this);
-				InventoryDragEvent.getHandlerList().unregister(this);
-				TickerTickEvent.getHandlerList().unregister(this);
-				PlayerDeathEvent.getHandlerList().unregister(this);
-				PlayerQuitEvent.getHandlerList().unregister(this);
-				
-				BaseUIObject.openUIObjects.remove(this);
-			} else {
-				new BukkitRunnable() {
-					@Override
-					public void run() {
-						okay_to_close = true;
-						BaseUIObject.this.open();
-					}
-				}.runTaskLater(plugin, 1L);
+		InventoryView view = e.getView();
+		if(view == null || this.view == null) {
+			return;
+		}
+		if(this.view.equals(view)) {
+			InventoryHistory phistory = history.get(((Player) e.getPlayer()).getUniqueId());
+			for(BaseUIObject object : new ArrayList<BaseUIObject>(phistory.getHistory())) {
+				object.inventory_close_handlers.forEach((MenuHandler<InventoryCloseEvent> handler) -> {
+					handler.run(e);
+				});
+				if(
+						object.okay_to_close || 
+						object.bypass_close
+				) {
+					InventoryCloseEvent.getHandlerList().unregister(object);
+					InventoryClickEvent.getHandlerList().unregister(object);
+					InventoryDragEvent.getHandlerList().unregister(object);
+					TickerTickEvent.getHandlerList().unregister(object);
+					PlayerDeathEvent.getHandlerList().unregister(object);
+					PlayerQuitEvent.getHandlerList().unregister(object);
+					BaseUIObject.openUIObjects.remove(object);
+					phistory.remove(object);
+				} else {
+					new BukkitRunnable() {
+						@Override
+						public void run() {
+							object.okay_to_close = true;
+							object.open();
+						}
+					}.runTaskLater(plugin, 1L);
+					break;
+				}
 			}
 		}
 	}
 	
 	public void forcefullyClose() {
-    	this.okay_to_close = true;
+    	okay_to_close = true;
     	bypass_close = true;
 		inventory_close_handlers.forEach((MenuHandler<InventoryCloseEvent> handler) -> {
 			handler.run(new InventoryCloseEvent(view));
@@ -400,12 +415,12 @@ public abstract class BaseUIObject implements Listener {
 
 	public void unregisterAll(int slot) {
 		handlers.get(slot).forEach((MenuHandler<InventoryClickEvent> e) -> {
-			this.unregister(e.getIdentifier());
+			unregister(e.getIdentifier());
 		});
 	}
 
 	public boolean isOpen() {
-		return this.view != null;
+		return view != null;
 	}
 	
 }

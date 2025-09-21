@@ -21,14 +21,40 @@ import org.bukkit.event.Listener;
 
 import dev.cworldstar.cwshared.Lang;
 import dev.cworldstar.cwshared.utils.FormatUtils;
+import lombok.Getter;
+import lombok.Setter;
+import net.kyori.adventure.text.Component;
 
 public class MainCommand extends ExtendedCommand implements TabExecutor, Listener {
 
 	public MainCommand(String command, String description, String permission) {
 		super(command, description, permission);
+	}
+
+	@Getter
+	@Setter
+	private Component incorrectSyntax = FormatUtils.mm("<gray>incorrect syntax");
+	
+	@Setter
+	private CommandConsumer noArgsConsumer = new CommandConsumer() {
+		@Override
+		protected void execute(CommandSender sender, ArrayList<String> args) {
+			sender.sendMessage(incorrectSyntax());
+		}
+	};
+	
+	public Component incorrectSyntax() {
+		return incorrectSyntax;
+	}
+	
+	public void registerLangCommand() {
 		registerCommand("lang", new CommandConsumer() {
 			@Override
 			protected void execute(CommandSender player, ArrayList<String> args) {
+				if(args.isEmpty()) {
+					player.sendMessage(FormatUtils.mm("<red><bold>You must specify the lang to change to!"));
+					return;
+				}
 				String lang = args.get(0);
 				if(Lang.get().langExists(lang)) {
 					Lang.get().change(player, lang);
@@ -62,9 +88,9 @@ public class MainCommand extends ExtendedCommand implements TabExecutor, Listene
 	
 	@Override
 	public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
-        List<String> strings = new ArrayList<>();
+        List<String> strings = new ArrayList<String>();
         complete(sender, args, strings);
-        List<String> returnList = new ArrayList<>();
+        List<String> returnList = new ArrayList<String>();
         String arg = args[args.length - 1].toLowerCase(Locale.ROOT);
         for (String item : strings) {
             if (item.toLowerCase(Locale.ROOT).contains(arg)) {
@@ -90,7 +116,7 @@ public class MainCommand extends ExtendedCommand implements TabExecutor, Listene
 	protected void execute(CommandSender sender, String[] args) {
 		if(args.length <= 0) {
 			if(!commands.containsKey("")) {
-				sender.sendMessage("incorrect syntax");
+				noArgsConsumer.accept(sender, new ArrayList<String>());
 				return;
 			}
 			commands.get("").accept(sender, new ArrayList<String>(Arrays.asList(args)));
@@ -143,6 +169,10 @@ public class MainCommand extends ExtendedCommand implements TabExecutor, Listene
 							List<String> completionMethod2 = command.getCompletions((Player) sender, args.length-1);
 							if(completionMethod2 != null) {
 								completions.addAll(completionMethod2);
+							}
+							List<String> completionMethod3 = command.getCompletions(List.of(args), args.length-1);
+							if(completionMethod3 != null) {
+								completions.addAll(completionMethod3);
 							}
 						}
 					}

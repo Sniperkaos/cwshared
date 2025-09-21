@@ -34,14 +34,22 @@ public class DataConfig {
 		return config;
 	}
 	
+	public void reload() {
+		config = YamlConfiguration.loadConfiguration(cfg);
+	}
+	
 	public YamlConfiguration load() {
 		return asYamlConfiguration();
+	}
+	
+	public File asFile() {
+		return cfg;
 	}
 	
 	public void save() {
 		try {
 			config.save(cfg);
-		} catch (IOException e) {
+		} catch (IOException | NullPointerException e) {
 			e.printStackTrace();
 		}
 	}
