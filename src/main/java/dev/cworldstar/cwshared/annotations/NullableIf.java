@@ -20,4 +20,10 @@ public @interface NullableIf {
 	 * @author cworldstar
 	 */
 	String Reason() default "Nullable by default.";
+	/**
+	 * The {@link NullableIf#reason()} is a reason for the 
+	 * denoted method to error.
+	 * @author cworldstar
+	 */
+	String reason() default "Nullable by default.";
 }

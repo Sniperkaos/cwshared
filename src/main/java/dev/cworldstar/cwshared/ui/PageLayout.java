@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import javax.annotation.ParametersAreNullableByDefault;
 
 import org.bukkit.Material;
@@ -17,12 +16,14 @@ import dev.cworldstar.cwshared.builders.ItemStackBuilder;
 import dev.cworldstar.cwshared.builders.PlayerHeadBuilder;
 import dev.cworldstar.cwshared.events.TickerTickEvent;
 
-public class PageLayout {
+public class PageLayout implements Cloneable {
 
 	private Map<Integer, ArrayList<MenuHandler<InventoryClickEvent>>> shiftHandlers = new HashMap<Integer, ArrayList<MenuHandler<InventoryClickEvent>>>();
 	private Map<Integer, ArrayList<MenuHandler<InventoryClickEvent>>> handlers = new HashMap<Integer, ArrayList<MenuHandler<InventoryClickEvent>>>();
 	private Map<Integer, ArrayList<MenuHandler<TickerTickEvent>>> tickHandlers = new HashMap<Integer, ArrayList<MenuHandler<TickerTickEvent>>>();
+	private ArrayList<MenuHandler<TickerTickEvent>> globalTickHandlers = new ArrayList<MenuHandler<TickerTickEvent>>();
 
+	
 	private Map<Integer, ItemStack> layout = new HashMap<Integer, ItemStack>();
 	private List<String> meta = new ArrayList<String>();
 	
@@ -30,16 +31,15 @@ public class PageLayout {
 	private Inventory inventory;
 	
 	private ItemStack barrierItem = new ItemStackBuilder(Material.BLACK_STAINED_GLASS_PANE).empty().build();
-	private ItemStack closeItem = new PlayerHeadBuilder("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvY2ZmZDA2OWE3YTBlYjhlMTQ5YWU3NjM1M2M1MGZjNjM4MzI5ZDI2NjI2MDgyNGFiMTFjMTY4MzEzZjViMGI4In19fQ==").build();
-	private ItemStack rightItem = new PlayerHeadBuilder("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMjkxYWM0MzJhYTQwZDdlN2E2ODdhYTg1MDQxZGU2MzY3MTJkNGYwMjI2MzJkZDUzNTZjODgwNTIxYWYyNzIzYSJ9fX0=").build();
-	private ItemStack leftItem = new PlayerHeadBuilder("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvN2EyYzEyY2IyMjkxODM4NGUwYTgxYzgyYTFlZDk5YWViZGNlOTRiMmVjMjc1NDgwMDk3MjMxOWI1NzkwMGFmYiJ9fX0=").build();
-	
+	private ItemStack closeItem = new PlayerHeadBuilder("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvY2ZmZDA2OWE3YTBlYjhlMTQ5YWU3NjM1M2M1MGZjNjM4MzI5ZDI2NjI2MDgyNGFiMTFjMTY4MzEzZjViMGI4In19fQ==").name("<red>Close").build();
+	private ItemStack rightItem = new PlayerHeadBuilder("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMjkxYWM0MzJhYTQwZDdlN2E2ODdhYTg1MDQxZGU2MzY3MTJkNGYwMjI2MzJkZDUzNTZjODgwNTIxYWYyNzIzYSJ9fX0=").name("<green>Next Page").build();
+	private ItemStack leftItem = new PlayerHeadBuilder("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvN2EyYzEyY2IyMjkxODM4NGUwYTgxYzgyYTFlZDk5YWViZGNlOTRiMmVjMjc1NDgwMDk3MjMxOWI1NzkwMGFmYiJ9fX0=").name("<blue>Last Page").build();
 	
 	private boolean active = false;
 	
-	private int rightSlot;
-	private int leftSlot;
-	private int closeSlot;
+	private Integer rightSlot = null;
+	private Integer leftSlot = null;
+	private Integer closeSlot = null;
 	private int page = -1;
 	
 	private List<Integer> barrier_slots = new ArrayList<Integer>();
@@ -49,32 +49,34 @@ public class PageLayout {
 	 * @apiNote This method should only be called ONCE per PageLayout, and never
 	 * called on a cloned layout with its slots set.
 	 * 
-	 * @param right_slot
-	 * @param left_slot
-	 * @param close_slot
+	 * @param next_slot The slot that will increase the page by 1.
+	 * @param back_slot The slot that will reduce the page by 1.
+	 * @param close_slot The slot that closes the menu.
 	 */
 	@ParametersAreNullableByDefault
-	public void setSlots(@Nullable Integer right_slot, @Nullable Integer left_slot, @Nullable Integer close_slot) {		
-		if(right_slot != null) {
-			rightSlot = right_slot;
+	public void setSlots(@Nullable Integer next_slot, @Nullable Integer back_slot, @Nullable Integer close_slot) {		
+		if(next_slot != null) {
+			rightSlot = next_slot;
+			addItem(rightSlot, rightItem);
 			addMenuClickHandler(rightSlot, new MenuHandler<InventoryClickEvent>((InventoryClickEvent e) -> {
 				e.setCancelled(true);
 				parent.nextPage();
 			}));
 		}
 		
-		if(left_slot != null) {
-			leftSlot = right_slot;
-			addMenuClickHandler(left_slot, new MenuHandler<InventoryClickEvent>((InventoryClickEvent e) -> {
+		if(back_slot != null) {
+			leftSlot = back_slot;
+			addItem(leftSlot, leftItem);
+			addMenuClickHandler(leftSlot, new MenuHandler<InventoryClickEvent>((InventoryClickEvent e) -> {
 				e.setCancelled(true);
 				parent.previousPage();
 			}));
 		}
 		
-		
 		if(close_slot != null) {
 			closeSlot = close_slot;
-			addMenuClickHandler(close_slot, new MenuHandler<InventoryClickEvent>((InventoryClickEvent e) -> {
+			addItem(closeSlot, closeItem);
+			addMenuClickHandler(closeSlot, new MenuHandler<InventoryClickEvent>((InventoryClickEvent e) -> {
 				e.setCancelled(true);
 				parent.close();
 			}));
@@ -139,6 +141,15 @@ public class PageLayout {
 		tickHandlers.put(slot, handler_list);
 	}
 	
+	public void addTickers(int slot, ArrayList<MenuHandler<TickerTickEvent>> list) {
+		tickHandlers.putIfAbsent(slot, new ArrayList<MenuHandler<TickerTickEvent>>());
+		tickHandlers.get(slot).addAll(list);
+	}
+	
+	public void addTicker(MenuHandler<TickerTickEvent> handler) {
+		globalTickHandlers.add(handler);
+	}
+	
 	public void addHandlers(int slot, ArrayList<MenuHandler<InventoryClickEvent>> list) {
 		handlers.putIfAbsent(slot, new ArrayList<MenuHandler<InventoryClickEvent>>());
 		handlers.get(slot).addAll(list);
@@ -153,18 +164,35 @@ public class PageLayout {
 		return handlers.get(slot).toArray(new MenuHandler<?>[0]);
 	}
 	
+	@Override
 	public PageLayout clone() {
-		PageLayout clone =  new PageLayout(this.parent);
+		PageLayout clone =  new PageLayout(parent, layout);
+		
 		clone.setBarrierItem(barrierItem);
 		clone.setCloseItem(closeItem);
 		clone.setLeftItem(leftItem);
 		clone.setRightItem(rightItem);
 		clone.setSlots(rightSlot, leftSlot, closeSlot);
 		clone.addBarriers(barrier_slots);
-		this.handlers.forEach((Integer slot, ArrayList<MenuHandler<InventoryClickEvent>> events) -> {
+		
+		meta.forEach(str -> {
+			clone.addMeta(str);
+		});
+		
+		handlers.forEach((Integer slot, ArrayList<MenuHandler<InventoryClickEvent>> events) -> {
 			clone.addHandlers(slot, events);
 		});
 
+		tickHandlers.forEach((Integer slot, ArrayList<MenuHandler<TickerTickEvent>> events) -> {
+			clone.addTickers(slot, events);
+		});
+		
+		shiftHandlers.forEach((Integer slot, ArrayList<MenuHandler<InventoryClickEvent>> events) -> {
+			events.forEach(handler -> {
+				clone.addShiftHandler(slot, handler);
+			});
+		});
+		
 		return clone;
 	}
 	
@@ -197,10 +225,13 @@ public class PageLayout {
 	}
 	
 	public void tick(TickerTickEvent e) {
-		this.tickHandlers.forEach((slot, handlerList) -> {
+		tickHandlers.forEach((slot, handlerList) -> {
 			handlerList.forEach((ticker) -> {
 				ticker.run(e);
 			});
+		});
+		globalTickHandlers.forEach((handler) -> {
+			handler.run(e);
 		});
 	}
 	
@@ -208,6 +239,11 @@ public class PageLayout {
 	
 	public PageLayout(PagedUIObject parent) {
 		this.parent = parent;
+	}
+	
+	private PageLayout(PagedUIObject parent, Map<Integer, ItemStack> layout) {
+		this(parent);
+		this.layout = new HashMap<Integer, ItemStack>(layout);
 	}
 
 	/**
@@ -230,16 +266,12 @@ public class PageLayout {
 			ui.setItem(slot, barrierItem);
 		});
 		
-		ui.setItem(leftSlot, leftItem);
-		ui.setItem(rightSlot, rightItem);
-		ui.setItem(closeSlot, closeItem);
-		
 	}
 	
 	public void clear() {
-		this.active = false;
-		this.inventory.clear();
-		this.inventory = null;
+		active = false;
+		inventory.clear();
+		inventory = null;
 	}
 
 	public void addUnclickableItem(int slot, ItemStack item) {
@@ -277,11 +309,12 @@ public class PageLayout {
 	 */
 	public int firstEmpty() {
 		for(int i=0; i<parent.getInventory().getSize(); i++) {
-			if(layout.get(i) == null && 
-					!barrier_slots.contains(i) &&
-					rightSlot != i &&
-					leftSlot != i &&
-					closeSlot != i
+			if(
+				layout.get(i) == null && 
+				!barrier_slots.contains(i) &&
+				rightSlot != i &&
+				leftSlot != i &&
+				closeSlot != i
 			) {
 				return i;
 			}
@@ -303,6 +336,10 @@ public class PageLayout {
 	
 	public void setPage(int page) {
 		this.page = page;
+	}
+	
+	public List<Integer> getBarrierSlots() {
+		return new ArrayList<Integer>(barrier_slots);
 	}
 	
 	public int getPage() {

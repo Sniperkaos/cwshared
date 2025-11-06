@@ -5,9 +5,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.logging.Level;
-
-import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -17,55 +14,31 @@ import org.bukkit.plugin.java.JavaPlugin;
  * @author cworldstar
  *
  */
-public class ResourceConfiguration {
+public class ResourceConfiguration extends Config {
 	
-	private File loc;
-	private YamlConfiguration config;
-	
-	public ResourceConfiguration(JavaPlugin plugin, File location, String resource) {
-		if(!location.exists()) {
-			try {
-				location.createNewFile();
-				InputStream stream = plugin.getResource(resource);
-				if(stream == null) {
-					// create empty file as resource instead.
-					stream = new FileInputStream(location);
-					Bukkit.getLogger().log(Level.SEVERE, "attempted to grab resource " + resource + ", but it did not exist!");
-				}
-				InputStreamReader reader = new InputStreamReader(stream);
-				YamlConfiguration.loadConfiguration(reader).save(location);
-				reader.close();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-		loc = location;
-	}
-	
-	public void reload() {
-		config = YamlConfiguration.loadConfiguration(loc);
-	}
-	
-	public File asFile() {
-		return loc;
-	}
-	
-	public YamlConfiguration asYamlConfiguration() {
-		if(config == null) {
-			config = YamlConfiguration.loadConfiguration(loc);
-		}
-		return config;
-	}
-	
-	public YamlConfiguration load() {
-		return asYamlConfiguration();
-	}
-	
-	public void save() {
+	private void loadConfig(JavaPlugin plugin, File location, String resource) {
 		try {
-			config.save(loc);
+			location.createNewFile();
+			InputStream stream = plugin.getResource(resource);
+			if(stream == null) {
+				// create empty file as resource instead.
+				stream = new FileInputStream(location);
+				// print a NPE to inform the developer
+				new NullPointerException("The given resource did not exist! Resource path: " + resource).printStackTrace();
+			}
+			
+			InputStreamReader reader = new InputStreamReader(stream);
+			YamlConfiguration.loadConfiguration(reader).save(location);
+			reader.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
+	
+	public ResourceConfiguration(JavaPlugin plugin, File location, String resource) {
+		if(!location.exists()) {
+			loadConfig(plugin, location, resource);
+		}
+		cfg(location);
 	}
 }

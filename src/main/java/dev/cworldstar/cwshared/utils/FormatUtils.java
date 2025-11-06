@@ -274,8 +274,11 @@ public class FormatUtils {
 	 * Returns an empty minimessage component.
 	 * @return An empty minimessage component.
 	 */
+	
+	private static Component EMPTY_COMPONENT = mm("");
+	
 	public static Component empty() {
-		return mm("");
+		return EMPTY_COMPONENT;
 	}
 	
     private final static TreeMap<Integer, String> map = new TreeMap<Integer, String>();

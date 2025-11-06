@@ -4,7 +4,7 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 public class MenuHandler<P> {
-	private Consumer<P> consumer;	
+	protected Consumer<P> consumer;	
 	private UUID uuid;
 	
 	public MenuHandler(Consumer<P> toRun) {

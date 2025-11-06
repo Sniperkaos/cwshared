@@ -26,9 +26,9 @@ public abstract class PagedUIObject extends BaseUIObject {
 	private int rslot = 2;
 	
 	public void addLayout(PageLayout layout) {
-		layout.setInventory(this.getInventory());
+		layout.setInventory(getInventory());
 		layout.setParent(this);
-		layout.setPage(this.layouts.size());
+		layout.setPage(layouts.size());
 		layouts.add(layout);
 	}
 
@@ -78,6 +78,7 @@ public abstract class PagedUIObject extends BaseUIObject {
 	}
 	
 	public void setup() {
+		
 		decorateLayout(to_decorate);
 		Validate.isTrue(layouts.size() > 0, "PagedUIObject#decorateLayout MUST contain at least 1 PageLayout!");
 		addGlobalMenuClickHandler(new MenuHandler<InventoryClickEvent>((InventoryClickEvent e)-> {
@@ -100,8 +101,8 @@ public abstract class PagedUIObject extends BaseUIObject {
 		setup();
 	}
 
-	public PagedUIObject(JavaPlugin plugin, Player player, InventorySize extraLarge, String string) {
-		super(plugin, player, extraLarge, string);
+	public PagedUIObject(JavaPlugin plugin, Player player, InventorySize size, String title) {
+		super(plugin, player, size, title);
 		layouts = new ArrayList<PageLayout>();
 		setup();
 	}
@@ -111,6 +112,7 @@ public abstract class PagedUIObject extends BaseUIObject {
 			currentLayout.clear();
 		}
 		currentLayout = layout;
+		layout.setParent(this);
 		layout.decorate(this);
 	}
 	
@@ -155,6 +157,7 @@ public abstract class PagedUIObject extends BaseUIObject {
 		}
 		
 		PageLayout layout = this.layouts.get(this.page);
+		layout.setParent(this);
 		// decorate new item
 		decoratePageWithLayout(layout);
 	}
@@ -167,6 +170,7 @@ public abstract class PagedUIObject extends BaseUIObject {
 		}
 		
 		PageLayout layout = this.layouts.get(page);
+		layout.setParent(this);
 		// decorate new item
 		decoratePageWithLayout(layout);
 	}

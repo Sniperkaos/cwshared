@@ -25,6 +25,11 @@ import lombok.Getter;
 import lombok.Setter;
 import net.kyori.adventure.text.Component;
 
+/**
+ * Used internally. If you want to use this, extend {@link CommandsClass} instead. 
+ * @author cworldstar
+ *
+ */
 public class MainCommand extends ExtendedCommand implements TabExecutor, Listener {
 
 	public MainCommand(String command, String description, String permission) {
@@ -148,8 +153,16 @@ public class MainCommand extends ExtendedCommand implements TabExecutor, Listene
 					if(command.hidden()) {
 						return;
 					}
-					if(command.hasPermission((Player) sender)) {
-						completions.add(id);
+					
+					switch(command.behavior()) {
+						case HIDE_WITHOUT_PERMISSION:
+							if(command.hasPermission((Player) sender)) {
+								completions.add(id);
+							}
+							break;
+						case LEAVE_VISIBLE:
+							completions.add(id);
+							break;
 					}
 				});
 				break;

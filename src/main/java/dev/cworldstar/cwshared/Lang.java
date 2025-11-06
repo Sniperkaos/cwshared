@@ -5,9 +5,11 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.UUID;
+import java.util.logging.Level;
 import java.util.stream.Collectors;
 
 import javax.annotation.Nonnull;
@@ -26,6 +28,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import dev.cworldstar.cwshared.events.PluginReloadEvent;
 import dev.cworldstar.cwshared.utils.FormatUtils;
 import lombok.Getter;
 import me.clip.placeholderapi.PlaceholderAPI;
@@ -81,11 +84,25 @@ public class Lang implements Listener {
 	
 	@EventHandler
 	/**
-	 * Listens to a player joining and supplies it 
+	 * Listens to a player joining and supplies a default lang of en-us. 
 	 * @param e The player join event.
 	 */
 	public void onPlayerJoin(PlayerJoinEvent e) {
-		languageMap.putIfAbsent(e.getPlayer().getUniqueId(), "en-us");
+		Locale lang = e.getPlayer().locale();
+		String langTag = lang.toLanguageTag().toLowerCase();
+		Bukkit.getLogger().log(Level.INFO, lang.toLanguageTag().toLowerCase());
+		boolean langExists = LANG_CACHE.containsKey(langTag);
+		if(!langExists) langTag = "en-us";
+		languageMap.put(e.getPlayer().getUniqueId(), lang.toLanguageTag().toLowerCase());
+	}
+	
+	@EventHandler
+	/**
+	 * Listens for when the {@link ReloadCommand} is fired.
+	 * @param e The {@link PluginReloadEvent}.
+	 */
+	public void onPluginReload(PluginReloadEvent e) {
+		if(!e.isCancelled()) reload(e.getPlugin());
 	}
 	
 	/**
@@ -130,17 +147,19 @@ public class Lang implements Listener {
 	}
 	
 	/**
-	 * Gets a MiniMessage component of a given lang lookup string with optional replacements.
-	 * This should be the ONLY version of Lang#get() that should be used, unless you require
-	 * {@link Lang#getList(OfflinePlayer, String)}.
-	 * @param lang
-	 * @param replacements
-	 * @return
+	 * Gets a MiniMessage component of a given lang lookup string with optional replacements. For prefixed
+	 * lang string, use {@link #get(Player, String, Map, boolean)}, where the boolean argument is whether or not
+	 * to append the prefix.
+	 * @param lang The lang location to lookup.
+	 * @param replacements A map of replacements to try, where the key is the string to replace, and the value is the replacement.
+	 * @return The parsed component.
 	 */
 	public Component get(@Nonnull Player player, @Nonnull String lang, @Nullable Map<String, String> replacements) {
 		Validate.notNull(lang, "Method Lang#get must contain a lang lookup key.");
 		String value = null;
 		String language = languageMap.get(player.getUniqueId());
+		
+		// set the prefix placeholder
 		
 		if(LANG_CACHE.get(language).getString(lang) != null) {
 			value = LANG_CACHE.get(language).getString(lang);
@@ -155,11 +174,14 @@ public class Lang implements Listener {
 			value = toPick.get(RandomUtils.nextInt(0, next));
 		}
 		
+		if(replacements == null) {
+			replacements = new HashMap<String, String>();
+			replacements.put("%prefix%", stringPrefix);
+		}
+		
 		// handle keys
-		if(replacements != null) {
-			for(Entry<String, String> replacement : replacements.entrySet()) {
-				value = value.replace(replacement.getKey(), replacement.getValue());
-			}
+		for(Entry<String, String> replacement : replacements.entrySet()) {
+			value = value.replace(replacement.getKey(), replacement.getValue());
 		}
 		
 		if(value == null) {
@@ -173,25 +195,62 @@ public class Lang implements Listener {
 		return get(player, lang, null);
 	}
 	
+	/**
+	 * Gets a prefixed version of the lang string. For a non prefixed version, use {@link #get(Player, String, Map)}.
+	 * @param player Who to parse the lang for.
+	 * @param lang The string location of the lang in the lang file.
+	 * @param replacements A list of replacements to look for.
+	 * @param prefix Whether or not to use the prefix.
+	 * @return A prefixed version of the lang string
+	 */
 	public Component get(@Nonnull Player player, @Nonnull String lang, @Nullable Map<String, String> replacements, boolean prefix) {
 		Component after = get(player, lang, replacements);
-		return getPrefix().append(after);
+		return getPrefix().append(FormatUtils.of(" ")).append(after);
 	}
 	
+	/**
+	 * Gets a lang list. Equal to {@link #get(Player, String, Map)} except instead of a string it grabs a list of strings.
+	 * @param player Who to get the lang for
+	 * @param lang The lang location in the lang file.
+	 * @param replacements A map of replacements to trigger.
+	 * @return A list of strings, or an empty list if none exists.
+	 */
 	public List<Component> getList(@Nonnull OfflinePlayer player, @Nonnull String lang, @Nullable Map<String, String> replacements) {
 		Validate.notNull(lang, "Method Lang#getList must contain a lang lookup key.");
 		String language = languageMap.get(player.getUniqueId());
 		List<String> lore = LANG_CACHE.get(language).getStringList(lang);
 		lore = PlaceholderAPI.setPlaceholders(player, lore);
 		
-		if(replacements != null) {
-			for(Entry<String, String> replacement : replacements.entrySet()) {
-				lore = lore.stream().map(str -> str.replace(replacement.getKey(), replacement.getValue())).toList();
-			}
+		if(replacements == null) {
+			replacements = new HashMap<String, String>();
+			replacements.put("%prefix%", stringPrefix);
+		}
+		
+		for(Entry<String, String> replacement : replacements.entrySet()) {
+			lore = lore.stream().map(str -> str.replace(replacement.getKey(), replacement.getValue())).toList();
 		}
 		
 		List<Component> result = lore.stream().map(line -> FormatUtils.mm(line)).collect(Collectors.toList());
 		return result;
+	}
+	
+	public List<String> getStringList(@Nonnull OfflinePlayer player, @Nonnull String lang, @Nullable Map<String, String> replacements) {
+		Validate.notNull(lang, "Method Lang#getList must contain a lang lookup key.");
+		String language = languageMap.get(player.getUniqueId());
+		List<String> lore = LANG_CACHE.get(language).getStringList(lang);
+		lore = PlaceholderAPI.setPlaceholders(player, lore);
+		
+		if(replacements == null) {
+			replacements = new HashMap<String, String>();
+			replacements.put("%prefix%", stringPrefix);
+		}
+		
+		for(Entry<String, String> replacement : replacements.entrySet()) {
+			lore = lore.stream().map(str -> str.replace(replacement.getKey(), replacement.getValue())).toList();
+		}
+		
+		
+		return lore;
 	}
 	
 	public List<Component> getList(OfflinePlayer player, String lang) {
@@ -240,30 +299,41 @@ public class Lang implements Listener {
 	}
 	
 	public String getAsString(@Nonnull Player player, @Nonnull String lang, @Nullable Map<String, String> replacements) {
-		Validate.notNull(lang, "Method Lang#getString must contain a lang lookup key.");
+		Validate.notNull(lang, "Method Lang#get must contain a lang lookup key.");
 		String value = null;
 		String language = languageMap.get(player.getUniqueId());
 		
+		// set the prefix placeholder
+		
 		if(LANG_CACHE.get(language).getString(lang) != null) {
 			value = LANG_CACHE.get(language).getString(lang);
-		} else if(LANG_CACHE.get(language).getStringList(lang) != null) {
+		} else if(LANG_CACHE.get(language).getStringList(lang).size() != 0) {
 			List<String> toPick = LANG_CACHE.get(language).getStringList(lang);
-			value = toPick.get(RandomUtils.nextInt(0, toPick.size()-1));
+			int next = 0;
+			if(toPick.size() == 0) {
+				next=0;
+			} else {
+				next= toPick.size()-1;
+			}
+			value = toPick.get(RandomUtils.nextInt(0, next));
+		}
+		
+		if(replacements == null) {
+			replacements = new HashMap<String, String>();
+			replacements.put("%prefix%", stringPrefix);
 		}
 		
 		// handle keys
-		if(replacements != null) {
-			for(Entry<String, String> replacement : replacements.entrySet()) {
-				value = value.replace(replacement.getKey(), replacement.getValue());
-			}
+		for(Entry<String, String> replacement : replacements.entrySet()) {
+			value = value.replace(replacement.getKey(), replacement.getValue());
 		}
+		
+
 		
 		if(value == null) {
-			return DEFAULT_LANG;
+			return DEFAULT_LANG.replace("%lang%", lang);
 		}
-		
 		value = PlaceholderAPI.setPlaceholders(player, value);
-	
 		return value;
 	}
 	

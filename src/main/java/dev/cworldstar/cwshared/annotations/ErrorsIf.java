@@ -22,4 +22,6 @@ public @interface ErrorsIf {
 	 */
 	
 	String Reason() default "Could be any reason.";
+	String reason() default "Could be any reason.";
+
 }

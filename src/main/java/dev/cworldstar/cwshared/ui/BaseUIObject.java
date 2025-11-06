@@ -1,6 +1,7 @@
 package dev.cworldstar.cwshared.ui;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -9,7 +10,9 @@ import java.util.logging.Level;
 
 import javax.annotation.Nonnull;
 
+import org.apache.commons.lang3.Validate;
 import org.bukkit.Bukkit;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -30,6 +33,7 @@ import org.jetbrains.annotations.NotNull;
 import dev.cworldstar.cwshared.events.TickerTickEvent;
 import dev.cworldstar.cwshared.utils.FormatUtils;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 public abstract class BaseUIObject implements Listener {
@@ -37,13 +41,49 @@ public abstract class BaseUIObject implements Listener {
 	public static List<BaseUIObject> openUIObjects = new ArrayList<BaseUIObject>();
 	public static HashMap<UUID, InventoryHistory> history = new HashMap<UUID, InventoryHistory>();
 	
-	public static enum InventorySize {
-
+	public static InventoryHistory getPlayerHistory(OfflinePlayer player) {
+		return history.get(player.getUniqueId());
+	}
+	
+	public static enum InventoryDecorateMode {
+		DEFAULT,
 		/**
-		 * Flexes inventory size based on contents of inventory.
-		 * TODO: incomplete
+		 * If the inventory decorate mode is Custom, the BaseUIObject will perform decorate() after the superclass is completed.
 		 */
-		FLEX(-1),
+		CUSTOM
+	}
+	
+	@NoArgsConstructor
+	public static class FlexDescription {
+		@Getter
+		@Setter
+		private Map<Integer, ItemStack> description;
+		public FlexDescription(Map<Integer, ItemStack> inventoryDescription) {
+			description = inventoryDescription;
+		}
+	}
+	
+	public static enum Row {
+		ONE_ROW(InventorySize.TINY),
+		TWO_ROWS(InventorySize.SMALL),
+		THREE_ROWS(InventorySize.MEDIUM),
+		FOUR_ROWS(InventorySize.MEDIUM_LARGE),
+		FIVE_ROWS(InventorySize.LARGE),
+		SIX_ROWS(InventorySize.EXTRA_LARGE);
+
+		private InventorySize size;
+		
+		public InventorySize size() {
+			return size;
+		}
+		
+		private Row(InventorySize size) {
+			this.size = size;
+		}
+	}
+	
+	public static enum InventorySize {
+		
 		/**
 		 * 1 row
 		 */
@@ -68,11 +108,13 @@ public abstract class BaseUIObject implements Listener {
 		 * 6 rows
 		 */
 		EXTRA_LARGE(54);
-
-		protected final int size;
+		
+		protected int size;
 		private InventorySize(int i) {
-			this.size = i;
+			size = i;
 		}
+		
+		public static final int MAX_SIZE = 54;
 		
 		/**
 		 * The inventory slot size associated with this enum
@@ -80,16 +122,50 @@ public abstract class BaseUIObject implements Listener {
 		 * 
 		 */
 		public int toInt() {
-			return this.size;
+			return size;
+		}
+		
+		public int size() {
+			return size;
+		}
+		
+		public static InventorySize fromRow(Row row) {
+			return row.size();
+		}
+		
+		public List<Integer> barriers() {
+			ArrayList<Integer> ints = new ArrayList<>();
+			for(int i = this.toInt()-1; i<9; i-=9) {
+				if(i>= this.toInt()-10) {
+					ints.add(i);
+					continue;
+				}
+				if(i<= 8 && !(size <= 18)) {
+					ints.add(i);
+					continue;
+				}
+				if((i%9 == 0 || i%9 == 8) && !(i==0) && !(i==size-9)) {
+					if(!ints.contains(i)) {
+						ints.add(i);
+					}
+					continue;
+				}
+
+			}
+			return ints;
 		}
 		
 		public static @NotNull InventorySize getSize(int size) {
-			for(InventorySize inventorySize : InventorySize.values()) {
+			for(InventorySize inventorySize : InventorySize.sorted()) {
 				if(inventorySize.toInt() >= size) {
 					return inventorySize;
 				}
 			}
-			return InventorySize.EXTRA_LARGE;
+			return Row.SIX_ROWS.size();
+		}
+		
+		public static @NotNull List<InventorySize> sorted() {
+			return Arrays.asList(InventorySize.values()).stream().sorted((s1, s2) -> {return Integer.compare(s1.size(), s2.size());}).toList();
 		}
 		
 		
@@ -98,6 +174,7 @@ public abstract class BaseUIObject implements Listener {
 	
 	protected boolean okay_to_close = true;
 	protected boolean bypass_close = false;
+	
 	private Player owner;
 	@Setter
 	@Getter
@@ -160,9 +237,9 @@ public abstract class BaseUIObject implements Listener {
 	}
 	
 	public void open() {
-		if(this.getOwner().getOpenInventory().equals(this.view)) {
-			return;
-		}
+		//if(this.getOwner().getOpenInventory().equals(this.view)) {
+		//	return;
+		//}
 		this.view = this.owner.openInventory(inventory);
 		if(!history.containsKey(getOwner().getUniqueId())) {
 			history.put(owner.getUniqueId(), new InventoryHistory(owner));
@@ -170,6 +247,10 @@ public abstract class BaseUIObject implements Listener {
 		InventoryHistory playerHistory = history.get(owner.getUniqueId());
 		playerHistory.addHistory(this);
 		BaseUIObject.openUIObjects.add(this);
+	}
+	
+	public void goBack() {
+		BaseUIObject.getPlayerHistory(owner).goBack();
 	}
 	
 	/**
@@ -422,5 +503,7 @@ public abstract class BaseUIObject implements Listener {
 	public boolean isOpen() {
 		return view != null;
 	}
+	
+	
 	
 }
