@@ -7,8 +7,8 @@
   <description>cworldstar's shared library</description>
   
       <properties>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
+        <maven.compiler.source>23</maven.compiler.source>
+        <maven.compiler.target>23</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
   
@@ -43,7 +43,7 @@
 		    <dependency>
 		      <groupId>org.projectlombok</groupId>
 		      <artifactId>lombok</artifactId>
-		      <version>1.18.38</version>
+		      <version>1.18.42</version>
 		      <scope>provided</scope>
 		    </dependency>
 		    <dependency>

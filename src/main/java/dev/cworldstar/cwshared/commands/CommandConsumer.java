@@ -21,6 +21,10 @@ public abstract class CommandConsumer {
 		return behavior;
 	}
 	
+	public void setPermissionBehavior(PermissionBehavior behavior) {
+		this.behavior = behavior;
+	}
+	
 	/**
 	 * @return If this command is hidden.
 	 */

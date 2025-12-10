@@ -25,7 +25,8 @@ public class ChatInput extends CompletableFuture<String> {
 	}
 	
 	public static boolean hasAwaitingChatInput(Player who) {
-		return handlerList.get(who.getUniqueId()).size() > 0;
+		if(!handlerList.containsKey(who.getUniqueId())) return false;
+		return getHandlerList(who).size() > 0;
 	}
 	
 	public void resolve() {

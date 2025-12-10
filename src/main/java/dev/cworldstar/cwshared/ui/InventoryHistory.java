@@ -13,7 +13,7 @@ import lombok.Getter;
  * InventoryHistory allows for methods like {@link #goBack()}.
  * @author cworldstar
  *
- */
+ */	
 public class InventoryHistory implements Iterable<BaseUIObject> {
 	
 	private ArrayList<BaseUIObject> history = new ArrayList<BaseUIObject>();

@@ -147,7 +147,9 @@ public class FormatUtils {
 	 */
 	public static Component createMiniMessageComponent(String text) {
 		MessageType type = findMessageType(text);
-		if(type.equals(MessageType.COLOR_CODES)) {
+		// FOR SOME REASON FINDMESSAGETYPE IS NULLABLE??? XD???? W JAVA JVM
+		if(type == null) type = MessageType.MINI_MESSAGE;
+		if(MessageType.COLOR_CODES == type) {
 			return LegacyComponentSerializer.builder().hexColors().extractUrls().character('&').build().deserialize(text);
 		}
 		return MINI_MESSAGE_FORMATTER.deserialize("<!italic>" + text);
@@ -275,10 +277,8 @@ public class FormatUtils {
 	 * @return An empty minimessage component.
 	 */
 	
-	private static Component EMPTY_COMPONENT = mm("");
-	
 	public static Component empty() {
-		return EMPTY_COMPONENT;
+		return MINI_MESSAGE_FORMATTER.deserialize("");
 	}
 	
     private final static TreeMap<Integer, String> map = new TreeMap<Integer, String>();

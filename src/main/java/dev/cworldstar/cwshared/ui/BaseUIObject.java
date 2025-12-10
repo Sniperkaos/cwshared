@@ -19,9 +19,11 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.ClickType;
+import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
+import org.bukkit.event.inventory.InventoryType.SlotType;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryView;
@@ -29,6 +31,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.jetbrains.annotations.NotNull;
+import net.kyori.adventure.text.Component;
 
 import dev.cworldstar.cwshared.events.TickerTickEvent;
 import dev.cworldstar.cwshared.utils.FormatUtils;
@@ -63,6 +66,11 @@ public abstract class BaseUIObject implements Listener {
 		}
 	}
 	
+	/**
+	 * Simple wrapper for the {@link InventorySize} enum.
+	 * Does nothing by itself.
+	 * @author cworldstar
+	 */
 	public static enum Row {
 		ONE_ROW(InventorySize.TINY),
 		TWO_ROWS(InventorySize.SMALL),
@@ -133,20 +141,20 @@ public abstract class BaseUIObject implements Listener {
 			return row.size();
 		}
 		
-		public List<Integer> barriers() {
+		public List<Integer> barriers() {	
 			ArrayList<Integer> ints = new ArrayList<>();
-			for(int i = this.toInt()-1; i<9; i-=9) {
-				if(i>= this.toInt()-10) {
-					ints.add(i);
+			for(int i = toInt(); i>=1; i-=1) {
+				if(i>=toInt()-10) {
+					ints.add(i-1);
 					continue;
 				}
-				if(i<= 8 && !(size <= 18)) {
-					ints.add(i);
+				if(i<= 8 && !(size <= 9)) {
+					ints.add(i-1);
 					continue;
 				}
-				if((i%9 == 0 || i%9 == 8) && !(i==0) && !(i==size-9)) {
-					if(!ints.contains(i)) {
-						ints.add(i);
+				if((i%9 == 1 || i%9 == 0) && !(i==0) && !(i==size-9)) {
+					if(!ints.contains(i-1)) {
+						ints.add(i-1);
 					}
 					continue;
 				}
@@ -210,8 +218,12 @@ public abstract class BaseUIObject implements Listener {
 	}
 	
 	public BaseUIObject(JavaPlugin plugin, Player player, InventorySize size, String title) {
+		this(plugin, player, size, FormatUtils.mm(title));
+	}
+	
+	public BaseUIObject(JavaPlugin plugin, Player player, InventorySize size, Component title) {
 		owner = player;
-		inventory = Bukkit.createInventory(player, size.toInt(), FormatUtils.mm(title));
+		inventory = Bukkit.createInventory(player, size.toInt(), title);
 		decorate(inventory);
 		if(backgroundItem != null && backgroundSlots != null) {
 			for(int slot : getBackgroundSlots()) {
@@ -219,7 +231,6 @@ public abstract class BaseUIObject implements Listener {
 			}
 		}
 		Bukkit.getPluginManager().registerEvents(this, plugin);
-
 	}
 	
 	public void close() {
@@ -384,19 +395,26 @@ public abstract class BaseUIObject implements Listener {
 		
 		Player clicker = (Player) e.getWhoClicked();
 		if(clicker.getOpenInventory().equals(this.view)) {
-			if(e.getClick() == ClickType.SHIFT_LEFT && !(this.inventory.getViewers().isEmpty())) {
+			if(
+				(
+					e.getClick() == ClickType.SHIFT_LEFT ||
+					e.getClick() == ClickType.SHIFT_RIGHT ||
+					e.getClick() == ClickType.CONTROL_DROP ||
+					e.getClick() == ClickType.DROP ||
+					e.getClick() == ClickType.NUMBER_KEY
+				)
+				&& !(this.inventory.getViewers().isEmpty())) {
 				e.setCancelled(true);
 				shift_click_handlers.forEach((MenuHandler<InventoryClickEvent> scHandler) -> {
 					scHandler.run(e);
 				});
-				return;
 			}
 		}
 		
 		if(c_inventory.equals(this.inventory)) {
-
 			if(e.getCurrentItem() == null) {
 				empty_click_handlers.forEach((MenuHandler<InventoryClickEvent> emptyHandler) -> {
+					e.setCancelled(true);
 					emptyHandler.run(e);
 				});
 			}
@@ -404,11 +422,13 @@ public abstract class BaseUIObject implements Listener {
 			ArrayList<MenuHandler<InventoryClickEvent>> handler_list = handlers.get(e.getSlot());
 			if(handler_list != null) {
 				handler_list.forEach((MenuHandler<InventoryClickEvent> handler) -> {
+					e.setCancelled(true);
 					handler.run(e);
 				});
 			}
 			if(placeable_slots.contains(e.getSlot())) {
 				if(e.getCurrentItem() == null || (e.isShiftClick() && e.getCurrentItem() != null)) {
+					e.setCancelled(true);
 					insertHandlers.get(e.getSlot()).run(e);
 				}
 				return;

@@ -15,7 +15,6 @@ import org.bukkit.plugin.java.JavaPlugin;
  *
  */
 public class ResourceConfiguration extends Config {
-	
 	private void loadConfig(JavaPlugin plugin, File location, String resource) {
 		try {
 			location.createNewFile();
@@ -23,7 +22,7 @@ public class ResourceConfiguration extends Config {
 			if(stream == null) {
 				// create empty file as resource instead.
 				stream = new FileInputStream(location);
-				// print a NPE to inform the developer
+				// print a NPE to inform the developer, not crashing the program.
 				new NullPointerException("The given resource did not exist! Resource path: " + resource).printStackTrace();
 			}
 			
@@ -36,6 +35,7 @@ public class ResourceConfiguration extends Config {
 	}
 	
 	public ResourceConfiguration(JavaPlugin plugin, File location, String resource) {
+		super(null);
 		if(!location.exists()) {
 			loadConfig(plugin, location, resource);
 		}

@@ -1,13 +1,16 @@
 package dev.cworldstar.cwshared;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
@@ -227,7 +230,7 @@ public class Lang implements Listener {
 		}
 		
 		for(Entry<String, String> replacement : replacements.entrySet()) {
-			lore = lore.stream().map(str -> str.replace(replacement.getKey(), replacement.getValue())).toList();
+			lore = lore.stream().map(str -> str.replace(replacement.getKey(), replacement.getValue())).collect(Collectors.toList());
 		}
 		
 		List<Component> result = lore.stream().map(line -> FormatUtils.mm(line)).collect(Collectors.toList());
@@ -246,7 +249,7 @@ public class Lang implements Listener {
 		}
 		
 		for(Entry<String, String> replacement : replacements.entrySet()) {
-			lore = lore.stream().map(str -> str.replace(replacement.getKey(), replacement.getValue())).toList();
+			lore = lore.stream().map(str -> str.replace(replacement.getKey(), replacement.getValue())).collect(Collectors.toList());
 		}
 		
 		
@@ -386,17 +389,22 @@ public class Lang implements Listener {
 		if(!langFile.exists()) {
 			try {
 				langFile.createNewFile();
-				InputStreamReader reader = new InputStreamReader(plugin.getResource("lang.yml"));
-				YamlConfiguration langConfig = YamlConfiguration.loadConfiguration(reader);
+				InputStream stream = plugin.getResource("lang.yml");
+				if(stream == null) {
+					return;
+				}
+				InputStreamReader reader = new InputStreamReader(stream);
+				langConfig = YamlConfiguration.loadConfiguration(reader);
 				langConfig.save(langFile);
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
+		} else {
+			langConfig = YamlConfiguration.loadConfiguration(langFile);
 		}
-		langConfig = YamlConfiguration.loadConfiguration(langFile);
 		ConfigurationSection prefixSettings = langConfig.getConfigurationSection("prefix");
 		prefixEnabled = prefixSettings.getBoolean("enabled");
-		prefix = FormatUtils.createMiniMessageComponent(prefixSettings.getString("value"));
+		prefix = FormatUtils.createMiniMessageComponent(Optional.ofNullable(prefixSettings.getString("value")).orElse("[ERROR]"));
 		stringPrefix = prefixSettings.getString("value");
 		
 		for(Entry<String, Object> set : langConfig.getValues(false).entrySet()) {

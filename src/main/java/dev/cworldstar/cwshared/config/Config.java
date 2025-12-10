@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 
+import org.apache.commons.lang3.ClassUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.configuration.serialization.ConfigurationSerializable;
@@ -17,6 +18,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import dev.cworldstar.cwshared.annotations.NullableIf;
 import dev.cworldstar.cwshared.annotations.YamlSerializable;
 
 public class Config implements Listener {
@@ -25,6 +27,13 @@ public class Config implements Listener {
 	private YamlConfiguration config;
 	private JavaPlugin owningPlugin;
 	boolean autoSave = false;
+	
+	protected Config(File file) {
+		if(file == null) {
+			return;
+		}
+		cfg = file;
+	}
 	
 	public void autoSave(JavaPlugin plugin) {
 		owningPlugin = plugin;
@@ -36,10 +45,27 @@ public class Config implements Listener {
 		autoSave = save;
 	}
 	
+	public void print() {
+		Bukkit.getLogger().log(Level.INFO, "[DataConfig]: Logging" + cfg.getAbsolutePath() + ".");
+		if(config == null) {
+			config = YamlConfiguration.loadConfiguration(cfg);
+		}
+		for(String key : config.getKeys(false)) {
+			Object o = config.get(key);
+			Bukkit.getLogger().log(Level.INFO, "[DataConfig]: Logging" + key + ".");
+			if(ClassUtils.isPrimitiveOrWrapper(o.getClass())) {
+				Bukkit.getLogger().log(Level.INFO, "[DataConfig]: " + String.valueOf(o));
+			} else {
+				Bukkit.getLogger().log(Level.INFO, "[DataConfig]: " + config.get(key).toString());
+			}
+		}
+	}
+	
 	@EventHandler
 	public void onPluginDisable(PluginDisableEvent e) {
 		// no need to nullcheck owning plugin, this listener will never fire unless owning plugin != null, see #autoSave.
 		if(e.getPlugin().getName().contentEquals(owningPlugin.getName()) && autoSave) {
+			owningPlugin.getLogger().log(Level.INFO, "Auto Saving " + cfg.getAbsolutePath());
 			save();
 		}
 	}
@@ -54,48 +80,79 @@ public class Config implements Listener {
 	
 	@Nullable
 	public boolean getBoolean(@NotNull String loc) {
+		if(config == null) {
+			config = YamlConfiguration.loadConfiguration(cfg);
+		}
 		return config.getBoolean(loc);
 	}
 	
 	@Nullable
 	public String getString(@NotNull String loc) {
+		if(config == null) {
+			config = YamlConfiguration.loadConfiguration(cfg);
+		}
 		return config.getString(loc);
 	}
 	
 	@Nullable
 	public ItemStack getItem(@NotNull String loc) {
+		if(config == null) {
+			config = YamlConfiguration.loadConfiguration(cfg);
+		}
 		return config.getItemStack(loc);
 	}
 	
 	@Nullable
 	public int getInt(@NotNull String loc) {
+		if(config == null) {
+			config = YamlConfiguration.loadConfiguration(cfg);
+		}
 		return config.getInt(loc);
 	}
 	
 	@Nullable
 	public long getLong(@NotNull String loc) {
+		if(config == null) {
+			config = YamlConfiguration.loadConfiguration(cfg);
+		}
 		return config.getLong(loc);
 	}
 	
 	@NotNull
 	public List<String> getStringList(@NotNull String loc) {
+		if(config == null) {
+			config = YamlConfiguration.loadConfiguration(cfg);
+		}
 		return config.getStringList(loc);
 	}
 	
 	@NotNull
 	public List<Integer> getIntList(@NotNull String loc) {
+		if(config == null) {
+			config = YamlConfiguration.loadConfiguration(cfg);
+		}
 		return config.getIntegerList(loc);
 	}
 	
 	@Nullable
+	@NullableIf(reason="This configuration does not contain the given location.")
 	@SuppressWarnings("unchecked")
-	public <T extends ConfigurationSerializable> T getSerializable(@NotNull String loc, Class<T> clazz) {
+	public <T extends ConfigurationSerializable> T getSerializable(@NotNull String loc, @NotNull Class<T> clazz) {
+		if(config == null) {
+			config = YamlConfiguration.loadConfiguration(cfg);
+		}
+		// check if the config contains at location loc with class T
+		if(!config.contains(loc)) return null;
 		return (T) config.get(loc, clazz);
 	}
 	
 	public void set(@NotNull String path, Object value) {
-		if(!(value.getClass().isPrimitive() ^ (value instanceof YamlSerializable) ^ (value instanceof List) ^ (value instanceof Map))) { //TODO: stronger checks on generics for list and map
-			Bukkit.getLogger().log(Level.WARNING, "A plugin attempted to set an object value which was not a primitive or an instance of YamlSerializable! It is not cancelled, but this may cause issues.");
+		if(config == null) {
+			config = YamlConfiguration.loadConfiguration(cfg);
+		}
+		if(!(value.getClass().isPrimitive() || (value instanceof YamlSerializable) || (value instanceof ConfigurationSerializable) || (value instanceof List) || (value instanceof Map))) { //TODO: stronger checks on generics for list and map
+			Bukkit.getLogger().log(Level.WARNING, "A plugin attempted to set an object value which was not a primitive, an instance of YamlSerializable, or an instance of ConfigurationSerializable! It is not cancelled, but this may cause issues.");
+			Bukkit.getLogger().log(Level.WARNING, "File: " + cfg.getAbsolutePath());
 			Thread.dumpStack();
 		}
 		config.set(path, value);

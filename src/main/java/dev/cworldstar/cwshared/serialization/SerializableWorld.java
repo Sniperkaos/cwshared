@@ -23,6 +23,6 @@ public class SerializableWorld extends AbstractSerializable<World> {
 	@SuppressWarnings("unchecked")
 	@Override
 	public <T extends YamlSerializable> T deserialize(Map<String, Object> serialized) {
-		return (T) Bukkit.getWorld((String) serialized.get("name"));
+		return (T) new SerializableWorld(Bukkit.getWorld((String) serialized.get("name")));
 	}
 }
